@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>迈克尔逊干涉实验数据分析</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 引入Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <!-- 引入Plot.ly绘图库 -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { 
+            font-family: "Microsoft YaHei", Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5; 
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background-color: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.1); 
+        }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .form-group { margin-bottom: 15px; }
+        .nav-tabs { margin-bottom: 20px; }
+        .result-box {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        #plotDiv {
+            width: 100%;
+            height: 450px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 14px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>迈克尔逊干涉实验数据分析</h1>
+        
+        <!-- 标签页导航 -->
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="input-tab" data-bs-toggle="tab" data-bs-target="#input" type="button" role="tab">数据输入</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="help-tab" data-bs-toggle="tab" data-bs-target="#help" type="button" role="tab">使用说明</button>
+            </li>
+        </ul>
+        
+        <!-- 标签页内容 -->
+        <div class="tab-content" id="myTabContent">
+            <!-- 数据输入标签页 -->
+            <div class="tab-pane fade show active" id="input" role="tabpanel">
+                <div class="alert alert-info">
+                    <strong>提示：</strong> 输入实验数据后点击"分析数据"按钮，系统将自动计算波长和不确定度。
+                </div>
+                
+                <!-- 输入方式选择 -->
+                <ul class="nav nav-pills mb-3" id="input-method" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pair-tab" data-bs-toggle="pill" data-bs-target="#pair-input" type="button">一对一输入</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bulk-tab" data-bs-toggle="pill" data-bs-target="#bulk-input" type="button">批量输入</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sample-tab" data-bs-toggle="pill" data-bs-target="#sample-data" type="button">样例数据</button>
+                    </li>
+                </ul>
+                
+                <!-- 输入内容 -->
+                <div class="tab-content" id="input-method-content">
+                    <!-- 一对一输入 -->
+                    <div class="tab-pane fade show active" id="pair-input" role="tabpanel">
+                        <div class="form-group">
+                            <label for="pair-data" class="form-label">请输入数据 (每行输入一组"圈数 位置"，如"0 0.09212")</label>
+                            <textarea class="form-control" id="pair-data" rows="10" placeholder="0 0.09212
+50 0.10865
+100 0.12514
+..."></textarea>
+                            <div class="invalid-feedback" id="pair-error"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 批量输入 -->
+                    <div class="tab-pane fade" id="bulk-input" role="tabpanel">
+                        <div class="form-group">
+                            <label for="fringes-data" class="form-label">请输入圈数数据 (用空格分隔)</label>
+                            <input type="text" class="form-control" id="fringes-data" placeholder="0 50 100 150 200 250 300 350 400 450 500 550">
+                            <div class="invalid-feedback" id="fringes-error"></div>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="positions-data" class="form-label">请输入对应的位置数据 (用空格分隔，单位mm)</label>
+                            <input type="text" class="form-control" id="positions-data" placeholder="42.90059 42.91691 42.93283 42.94870 42.96459 42.98093 42.99664 43.01259 43.02869 43.04511 43.06121 43.07731">
+                            <div class="invalid-feedback" id="positions-error"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 样例数据 -->
+                    <div class="tab-pane fade" id="sample-data" role="tabpanel">
+                        <div class="alert alert-success">
+                            <h5>样例数据已加载</h5>
+                            <p>这是论文中的实验数据，您可以直接点击"分析数据"按钮查看结果。</p>
+                        </div>
+                        
+                        <table class="table table-striped table-sm">
+                            <thead>
+                                <tr>
+                                    <th>圈数</th>
+                                    <th>位置 (mm)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>0</td><td>42.90059</td></tr>
+                                <tr><td>50</td><td>42.91691</td></tr>
+                                <tr><td>100</td><td>42.93283</td></tr>
+                                <tr><td>150</td><td>42.94870</td></tr>
+                                <tr><td>200</td><td>42.96459</td></tr>
+                                <tr><td>250</td><td>42.98093</td></tr>
+                                <tr><td>300</td><td>42.99664</td></tr>
+                                <tr><td>350</td><td>43.01259</td></tr>
+                                <tr><td>400</td><td>43.02869</td></tr>
+                                <tr><td>450</td><td>43.04511</td></tr>
+                                <tr><td>500</td><td>43.06121</td></tr>
+                                <tr><td>550</td><td>43.07731</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 高级选项 -->
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">高级选项</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="correct-backlash" checked>
+                            <label class="form-check-label" for="correct-backlash">
+                                校正螺纹空程差 (推荐选择)
+                            </label>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="deviation" class="form-label">条纹中心偏移量 (cm)</label>
+                                    <input type="number" class="form-control" id="deviation" value="0" step="0.1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="path-length" class="form-label">S1到毛玻璃屏的距离 (cm)</label>
+                                    <input type="number" class="form-control" id="path-length" value="41">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 分析按钮 -->
+                <div class="text-center mt-4">
+                    <button class="btn btn-primary btn-lg" id="analyze-btn">分析数据</button>
+                </div>
+                
+                <!-- 结果显示区域 -->
+                <div id="results-container" class="mt-5" style="display: none;">
+                    <h3 class="text-center mb-4">分析结果</h3>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card text-center mb-3">
+                                <div class="card-header bg-primary text-white">波长</div>
+                                <div class="card-body">
+                                    <h5 class="card-title" id="wavelength">0.00 nm</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center mb-3">
+                                <div class="card-header bg-primary text-white">不确定度</div>
+                                <div class="card-body">
+                                    <h5 class="card-title" id="uncertainty">0.00 nm</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center mb-3">
+                                <div class="card-header bg-primary text-white">拟合优度 R²</div>
+                                <div class="card-body">
+                                    <h5 class="card-title" id="r-squared">0.0000</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-box">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-striped">
+                                    <tbody>
+                                        <tr>
+                                            <th>斜率:</th>
+                                            <td id="slope">0.00000000</td>
+                                        </tr>
+                                        <tr>
+                                            <th>斜率标准不确定度:</th>
+                                            <td id="slope-error">0.00000000</td>
+                                        </tr>
+                                        <tr>
+                                            <th>相对不确定度:</th>
+                                            <td id="relative-uncertainty">0.00%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <strong>理论值对比:</strong>
+                                    <p>He-Ne激光波长理论值: 632.8 nm</p>
+                                    <p id="theory-comparison"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 图表区域 -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">数据拟合图</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="plotDiv"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 实验建议 -->
+                    <div class="card mt-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">实验建议</h5>
+                        </div>
+                        <div class="card-body">
+                            <ol>
+                                <li>确保实验光路调整良好，尽量减小条纹中心偏移</li>
+                                <li>校准刻度后，建议沿同一方向继续旋转微调鼓轮3-4圈后再开始记录数据，以消除螺纹空程差</li>
+                                <li>在条纹比较稀疏(镜面间距较小)时调节条纹中心到理想位置</li>
+                                <li>使用更多的数据点可以提高测量精度</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 使用说明标签页 -->
+            <div class="tab-pane fade" id="help" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">迈克尔逊干涉实验原理</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>在迈克尔逊干涉实验中，干涉环圈数(N)与镜面位移(d)之间的关系为：</p>
+                        <div class="text-center my-3">
+                            <strong>d = N·λ/2 + A</strong>
+                        </div>
+                        <p>其中λ是光源波长，A是积分常量。通过线性拟合，可以得到斜率等于λ/2，从而计算出波长。</p>
+                        
+                        <div class="text-center my-4">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Interferometre_Michelson_schema.svg/500px-Interferometre_Michelson_schema.svg.png" 
+                                 alt="迈克尔逊干涉仪原理图" class="img-fluid" style="max-width: 400px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">数据处理方法</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>本工具使用线性回归方法处理实验数据，优势包括：</p>
+                        <ol>
+                            <li><strong>简便快捷</strong> - 避免了传统逐差法繁琐的手工计算</li>
+                            <li><strong>准确可靠</strong> - 考虑了所有数据点的贡献，结果更可靠</li>
+                            <li><strong>不确定度分析</strong> - 提供了完整的不确定度评估</li>
+                            <li><strong>可视化展示</strong> - 直观显示数据点和拟合结果</li>
+                        </ol>
+                        
+                        <h6 class="mt-4">不确定度分析</h6>
+                        <p>波长的不确定度来源主要包括：</p>
+                        <ul>
+                            <li>斜率测量的不确定度 (由线性回归得出)</li>
+                            <li>圈数读取的不确定度 (假设为±0.5圈)</li>
+                            <li>光路调整的不确定度</li>
+                            <li>螺纹空程差导致的系统不确定度</li>
+                        </ul>
+                        
+                        <p>本工具综合考虑了这些因素，给出合理的不确定度估计。</p>
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">使用指南</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            <li>
+                                <strong>数据输入</strong>
+                                <p>您可以选择三种方式输入数据：</p>
+                                <ul>
+                                    <li><strong>一对一输入</strong>：每行输入一组"圈数 位置"数据</li>
+                                    <li><strong>批量输入</strong>：分别输入所有圈数和所有位置</li>
+                                    <li><strong>样例数据</strong>：使用预设的示例数据</li>
+                                </ul>
+                            </li>
+                            <li>
+                                <strong>高级选项</strong>
+                                <p>可以设置以下高级参数：</p>
+                                <ul>
+                                    <li>校正螺纹空程差：建议启用此选项</li>
+                                    <li>条纹中心偏移量：如有条纹中心偏移，可输入偏移距离</li>
+                                    <li>S1到毛玻璃屏的距离：默认为41cm</li>
+                                </ul>
+                            </li>
+                            <li>
+                                <strong>分析结果</strong>
+                                <p>点击"分析数据"按钮后，系统会计算并显示：</p>
+                                <ul>
+                                    <li>波长和不确定度</li>
+                                    <li>拟合优度R²</li>
+                                    <li>斜率和相关参数</li>
+                                    <li>数据拟合图</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>物理实验竞赛讲课组 © 2025</p>
+        </div>
+    </div>
+
+    <!-- 引入Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 引入计算脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 分析按钮点击事件
+            document.getElementById('analyze-btn').addEventListener('click', function() {
+                // 获取当前激活的输入方式
+                let fringes = [];
+                let positions = [];
+                let validData = true;
+                
+                // 清除所有错误提示
+                document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+                
+                // 确定当前激活的输入方式
+                const activeInputMethod = document.querySelector('.tab-pane.show.active').id;
+                
+                if (activeInputMethod === 'pair-input') {
+                    // 一对一输入
+                    const pairData = document.getElementById('pair-data').value.trim();
+                    if (!pairData) {
+                        document.getElementById('pair-data').classList.add('is-invalid');
+                        document.getElementById('pair-error').textContent = '请输入数据';
+                        validData = false;
+                    } else {
+                        const lines = pairData.split('\n');
+                        for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            if (!line) continue;
+                            
+                            const parts = line.split(/\s+/);
+                            if (parts.length !== 2) {
+                                document.getElementById('pair-data').classList.add('is-invalid');
+                                document.getElementById('pair-error').textContent = `第${i+1}行格式错误，应为"圈数 位置"`;
+                                validData = false;
+                                break;
+                            }
+                            
+                            const fringe = parseFloat(parts[0]);
+                            const position = parseFloat(parts[1]);
+                            
+                            if (isNaN(fringe) || isNaN(position)) {
+                                document.getElementById('pair-data').classList.add('is-invalid');
+                                document.getElementById('pair-error').textContent = `第${i+1}行包含无效数字`;
+                                validData = false;
+                                break;
+                            }
+                            
+                            fringes.push(fringe);
+                            positions.push(position);
+                        }
+                    }
+                } else if (activeInputMethod === 'bulk-input') {
+                    // 批量输入
+                    const fringesInput = document.getElementById('fringes-data').value.trim();
+                    const positionsInput = document.getElementById('positions-data').value.trim();
+                    
+                    if (!fringesInput) {
+                        document.getElementById('fringes-data').classList.add('is-invalid');
+                        document.getElementById('fringes-error').textContent = '请输入圈数数据';
+                        validData = false;
+                    }
+                    
+                    if (!positionsInput) {
+                        document.getElementById('positions-data').classList.add('is-invalid');
+                        document.getElementById('positions-error').textContent = '请输入位置数据';
+                        validData = false;
+                    }
+                    
+                    if (validData) {
+                        fringes = fringesInput.split(/\s+/).map(Number);
+                        positions = positionsInput.split(/\s+/).map(Number);
+                        
+                        if (fringes.some(isNaN)) {
+                            document.getElementById('fringes-data').classList.add('is-invalid');
+                            document.getElementById('fringes-error').textContent = '圈数数据包含无效数字';
+                            validData = false;
+                        }
+                        
+                        if (positions.some(isNaN)) {
+                            document.getElementById('positions-data').classList.add('is-invalid');
+                            document.getElementById('positions-error').textContent = '位置数据包含无效数字';
+                            validData = false;
+                        }
+                        
+                        if (fringes.length !== positions.length) {
+                            document.getElementById('positions-data').classList.add('is-invalid');
+                            document.getElementById('positions-error').textContent = '圈数和位置的数据点数量不一致';
+                            validData = false;
+                        }
+                    }
+                } else if (activeInputMethod === 'sample-data') {
+                    // 样例数据
+                    fringes = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550];
+                    positions = [42.90059, 42.91691, 42.93283, 42.94870, 42.96459, 42.98093, 42.99664, 43.01259, 43.02869, 43.04511, 43.06121, 43.07731];
+                }
+                
+                if (validData && fringes.length < 2) {
+                    alert('至少需要2个数据点进行拟合分析');
+                    validData = false;
+                }
+                
+                if (validData) {
+                    // 获取高级选项
+                    const correctBacklash = document.getElementById('correct-backlash').checked;
+                    const deviation = parseFloat(document.getElementById('deviation').value) || 0;
+                    const pathLength = parseFloat(document.getElementById('path-length').value) || 41;
+                    
+                    // 分析数据
+                    const results = analyzeData(fringes, positions, correctBacklash, deviation, pathLength);
+                    
+                    // 显示结果
+                    displayResults(results, fringes, positions);
+                    
+                    // 显示结果区域
+                    document.getElementById('results-container').style.display = 'block';
+                    
+                    // 滚动到结果区域
+                    document.getElementById('results-container').scrollIntoView({behavior: 'smooth'});
+                }
+            });
+            
+            // 数据分析函数
+            function analyzeData(fringes, positions, correctBacklash, deviation, pathLength) {
+                // 校正螺纹空程差
+                if (correctBacklash) {
+                    positions = correctBacklashError(positions, fringes);
+                }
+                
+                // 校正光路偏移
+                let result;
+                if (deviation !== 0) {
+                    result = correctPathError(fringes, positions, deviation, pathLength);
+                } else {
+                    result = calculateWavelength(fringes, positions);
+                }
+                
+                // 计算相对不确定度
+                const fringesRange = Math.max(...fringes) - Math.min(...fringes);
+                const totalUncertainty = calculateUncertainty(result.slope, result.slopeErr, fringesRange);
+                
+                // 整合结果
+                return {
+                    ...result,
+                    totalUncertainty: totalUncertainty
+                };
+            }
+            
+            // 校正螺纹空程差
+            function correctBacklashError(positions, fringes) {
+                if (positions.length < 4) {
+                    return positions;  // 数据点太少，无法校正
+                }
+                
+                // 计算相邻数据间的差值
+                let diffs = [];
+                for (let i = 1; i < positions.length; i++) {
+                    diffs.push(positions[i] - positions[i-1]);
+                }
+                
+                // 检查前3个差值是否比后面的差值明显偏大
+                const laterDiffs = diffs.slice(3);
+                const avgLaterDiff = laterDiffs.length > 0 ? 
+                    laterDiffs.reduce((a, b) => a + b, 0) / laterDiffs.length : 
+                    diffs.reduce((a, b) => a + b, 0) / diffs.length;
+                
+                let correctionNeeded = false;
+                for (let i = 0; i < Math.min(3, diffs.length); i++) {
+                    if (diffs[i] > avgLaterDiff * 1.05) {  // 如果差值比平均值大5%以上
+                        correctionNeeded = true;
+                        break;
+                    }
+                }
+                
+                if (correctionNeeded) {
+                    // 使用后面稳定部分的平均间隔来校正前面的数据
+                    let correctedPositions = [...positions];
+                    for (let i = 1; i < Math.min(4, positions.length); i++) {
+                        correctedPositions[i] = positions[0] + i * avgLaterDiff;
+                    }
+                    return correctedPositions;
+                } else {
+                    return positions;
+                }
+            }
+            
+            // 校正光路偏移
+            function correctPathError(fringes, positions, deviation, pathLength) {
+                if (deviation === 0) {
+                    return calculateWavelength(fringes, positions);
+                }
+                
+                // 计算偏移角θ
+                const theta = Math.atan(deviation / pathLength);
+                const cosTheta = Math.cos(theta);
+                
+                // 校正位移数据
+                const correctedPositions = positions.map(p => p / cosTheta);
+                
+                return calculateWavelength(fringes, correctedPositions);
+            }
+            
+            // 计算波长
+            function calculateWavelength(fringes, positions) {
+                // 线性回归拟合
+                const regression = linearRegression(fringes, positions);
+                const slope = regression.slope;
+                const intercept = regression.intercept;
+                const rSquared = regression.r2;
+                const slopeErr = regression.slopeError;
+                
+                // 波长 = 斜率 * 2 * 1000000 (转换为纳米)
+                const wavelength = slope * 2 * 1000000;
+                const wavelengthUncertainty = slopeErr * 2 * 1000000;
+                
+                return {
+                    wavelength: wavelength,
+                    wavelengthUncertainty: wavelengthUncertainty,
+                    slope: slope,
+                    slopeErr: slopeErr,
+                    rSquared: rSquared,
+                    intercept: intercept
+                };
+            }
+            
+            // 计算不确定度
+            function calculateUncertainty(slope, slopeErr, fringesRange) {
+                // 假设圈数读取不确定度为0.5圈
+                const fringeUncertainty = 0.5 / fringesRange;
+                
+                // 斜率测量的相对不确定度
+                const slopeUncertainty = slopeErr / slope;
+                
+                // 总的相对不确定度(平方和的平方根)
+                const totalUncertainty = Math.sqrt(slopeUncertainty**2 + fringeUncertainty**2) * 100;
+                
+                return totalUncertainty;
+            }
+            
+            // 线性回归
+            function linearRegression(x, y) {
+                const n = x.length;
+                let sumX = 0;
+                let sumY = 0;
+                let sumXY = 0;
+                let sumXX = 0;
+                let sumYY = 0;
+                
+                for (let i = 0; i < n; i++) {
+                    sumX += x[i];
+                    sumY += y[i];
+                    sumXY += x[i] * y[i];
+                    sumXX += x[i] * x[i];
+                    sumYY += y[i] * y[i];
+                }
+                
+                const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                const intercept = (sumY - slope * sumX) / n;
+                
+                // 计算R²
+                const yMean = sumY / n;
+                let totalVariation = 0;
+                let explainedVariation = 0;
+                
+                for (let i = 0; i < n; i++) {
+                    totalVariation += (y[i] - yMean) ** 2;
+                    explainedVariation += (slope * x[i] + intercept - yMean) ** 2;
+                }
+                
+                const r2 = explainedVariation / totalVariation;
+                
+                // 计算斜率的标准误差
+                let residualSumOfSquares = 0;
+                for (let i = 0; i < n; i++) {
+                    const predicted = slope * x[i] + intercept;
+                    residualSumOfSquares += (y[i] - predicted) ** 2;
+                }
+                
+                const sigmaHat = Math.sqrt(residualSumOfSquares / (n - 2));
+                const slopeError = sigmaHat / Math.sqrt(sumXX - (sumX ** 2) / n);
+                
+                return {
+                    slope: slope,
+                    intercept: intercept,
+                    r2: r2,
+                    slopeError: slopeError
+                };
+            }
+            
+            // 显示结果
+            function displayResults(results, fringes, positions) {
+                // 更新结果显示
+                document.getElementById('wavelength').textContent = `${results.wavelength.toFixed(2)} nm`;
+                document.getElementById('uncertainty').textContent = `± ${results.wavelengthUncertainty.toFixed(2)} nm`;
+                document.getElementById('r-squared').textContent = results.rSquared.toFixed(6);
+                document.getElementById('slope').textContent = results.slope.toExponential(8);
+                document.getElementById('slope-error').textContent = results.slopeErr.toExponential(8);
+                document.getElementById('relative-uncertainty').textContent = `${results.totalUncertainty.toFixed(2)}%`;
+                
+                // 与理论值对比
+                const theoreticalValue = 632.8;
+                const deviation = results.wavelength - theoreticalValue;
+                const relativeDeviation = (deviation / theoreticalValue) * 100;
+                document.getElementById('theory-comparison').textContent = 
+                    `测量偏差: ${deviation.toFixed(2)} nm (${relativeDeviation.toFixed(2)}%)`;
+                
+                // 绘制图表
+                plotData(fringes, positions, results);
+            }
+            
+            // 绘制图表
+            function plotData(fringes, positions, results) {
+                const plotDiv = document.getElementById('plotDiv');
+                
+                // 创建数据点
+                const dataPoints = {
+                    x: fringes,
+                    y: positions,
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: '实验数据',
+                    marker: { 
+                        color: 'blue',
+                        size: 8
+                    }
+                };
+                
+                // 创建拟合线
+                const xFit = [Math.min(...fringes), Math.max(...fringes)];
+                const yFit = xFit.map(x => results.slope * x + results.intercept);
+                
+                const fitLine = {
+                    x: xFit,
+                    y: yFit,
+                    mode: 'lines',
+                    type: 'scatter',
+                    name: '线性拟合',
+                    line: {
+                        color: 'red',
+                        width: 2
+                    }
+                };
+                
+                // 创建注解文字
+                const annotation = {
+                    x: Math.min(...fringes) + (Math.max(...fringes) - Math.min(...fringes)) * 0.05,
+                    y: Math.max(...positions) - (Math.max(...positions) - Math.min(...positions)) * 0.1,
+                    text: `波长 = ${results.wavelength.toFixed(2)} ± ${results.wavelengthUncertainty.toFixed(2)} nm<br>相对不确定度 = ${results.totalUncertainty.toFixed(2)}%<br>斜率 = ${results.slope.toExponential(5)} mm/圈<br>R² = ${results.rSquared.toFixed(6)}`,
+                    showarrow: false,
+                    bgcolor: 'rgba(255, 255, 255, 0.8)',
+                    bordercolor: 'rgba(0, 0, 0, 0.1)',
+                    borderwidth: 1,
+                    borderpad: 4,
+                    font: { size: 12 }
+                };
+                
+                const layout = {
+                    title: '迈克尔逊干涉实验数据分析',
+                    xaxis: {
+                        title: '干涉环圈数',
+                        zeroline: false
+                    },
+                    yaxis: {
+                        title: '镜面位移 (mm)',
+                        zeroline: false
+                    },
+                    annotations: [annotation],
+                    legend: {
+                        x: 0.7,
+                        y: 0.1
+                    },
+                    margin: { t: 50, r: 50, b: 100, l: 100 }
+                };
+                
+                const config = {
+                    responsive: true,
+                    displayModeBar: false
+                };
+                
+                Plotly.newPlot(plotDiv, [dataPoints, fitLine], layout, config);
+            }
+        });
+    </script>
+</body>
+</html>
